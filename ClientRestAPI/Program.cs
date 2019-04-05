@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ClientRestAPI
@@ -12,7 +13,11 @@ namespace ClientRestAPI
     {
         public int Id { get; set; }
         public string Title { get; set; }
+        public string Description { get; set; }
+        public string Author { get; set; }
+        public DateTime Created { get; set; }
     }
+
 
     internal class Program
     {
@@ -87,18 +92,35 @@ namespace ClientRestAPI
             return url.Segments[0] + url.Segments[1] + url.Segments[2];
         }
 
+        private static DateTime GenRandomDateTime(DateTime startDate, DateTime toDate)
+        {
+            if (startDate >= toDate)
+            {
+                var swap = startDate;
+                startDate = toDate;
+                toDate = swap;
+            }
+
+            var random = new Random();
+            var range = toDate - startDate;
+            var randomSpan = new TimeSpan((long) (random.NextDouble() * range.Ticks));
+            return startDate + randomSpan;
+        }
+
         private static async Task RunAsync()
         {
             Client.BaseAddress = new Uri("https://eugenetestwebapp.azurewebsites.net");
             Client.DefaultRequestHeaders.Accept.Clear();
             Client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
+            const int initIdRecord = 8000, cntRecord = 10; //init constant value
 
             try
             {
                 // Create a new book
                 var url =
-                    await CreateBookAsync(new Book {Id = 8000, Title = "Star Wars"});
+                    await CreateBookAsync(new Book
+                        {Id = initIdRecord, Title = "Star Wars"});
                 Console.WriteLine($"Created at {url}");
 
                 // Get the book
@@ -114,25 +136,35 @@ namespace ClientRestAPI
                 book = await GetBookAsync(url.PathAndQuery);
                 ShowBook(book);
 
-                var repository = new List<Book>
+                // Create test repository
+                var repository = new List<Book>();
+                var startDate = Convert.ToDateTime("01.01.1978");
+                var toDate = DateTime.Now;
+                for (var i = initIdRecord + 1; i < initIdRecord + cntRecord; i++)
                 {
-                    new Book {Id = 8001, Title = "Star Wars 1"},
-                    new Book {Id = 8002, Title = "Star Wars 2"},
-                    new Book {Id = 8003, Title = "Star Wars 3"},
-                    new Book {Id = 8004, Title = "Star Wars 4"}
-                };
+                    Thread.Sleep(5);
+                    repository.Add(new Book
+                    {
+                        Id = i,
+                        Title = $"Star Wars, part {i - initIdRecord}",
+                        Description = "Star wars saga",
+                        Author = "George Lucas",
+                        Created = GenRandomDateTime(startDate, toDate)
+                    });
+                }
 
                 // Add the book list from repository to server
+                Console.WriteLine("Add the book list from repository to server..");
                 foreach (var bk in repository) await AddBookAsync(bk);
+
+                repository.Insert(0, book);
 
                 // Get all books
                 Console.WriteLine("All books...");
                 var books = await GetBooksAsync(GetAbsUrl(url));
-                repository.Clear();
                 foreach (var bk in books)
                 {
-                    repository.Add(bk);
-                    ShowBook(bk);
+                    if (bk.Id >= initIdRecord && bk.Id <= initIdRecord + cntRecord) ShowBook(bk);
                 }
 
                 Console.WriteLine(
@@ -143,7 +175,8 @@ namespace ClientRestAPI
                 foreach (var bk in repository)
                 {
                     var statusCode = await DeleteBookAsync(bk.Id);
-                    Console.WriteLine($"Deleted (HTTP Status = {(int) statusCode})");
+                    Console.WriteLine(
+                        $"Deleted id({bk.Id}):(HTTP Status = {(int) statusCode})");
                 }
             }
             catch (Exception e)
@@ -151,6 +184,7 @@ namespace ClientRestAPI
                 Console.WriteLine(e.Message);
             }
 
+            Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
         }
 
