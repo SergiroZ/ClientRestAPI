@@ -26,7 +26,7 @@ namespace ClientRestAPI
 
         private static async Task<Uri> CreateBookAsync(Book book)
         {
-            HttpResponseMessage response = await Client.PostAsJsonAsync(
+            var response = await Client.PostAsJsonAsync(
                 "api/books", book);
             response.EnsureSuccessStatusCode();
 
@@ -37,18 +37,16 @@ namespace ClientRestAPI
         private static async Task<Book> GetBookAsync(string path)
         {
             Book book = null;
-            HttpResponseMessage response = await Client.GetAsync(path);
+            var response = await Client.GetAsync(path);
             if (response.IsSuccessStatusCode)
-            {
                 book = await response.Content.ReadAsAsync<Book>();
-            }
 
             return book;
         }
 
         private static async Task<IEnumerable<Book>> GetBooksAsync(string path)
         {
-            HttpResponseMessage response = await Client.GetAsync(path);
+            var response = await Client.GetAsync(path);
             var dataObjects = await response.Content.ReadAsAsync<IEnumerable<Book>>();
             var booksAsync = dataObjects as Book[] ?? dataObjects.ToArray();
 
@@ -57,8 +55,8 @@ namespace ClientRestAPI
 
         private static async Task<Book> AddBookAsync(Book book)
         {
-            HttpResponseMessage response = await Client.PostAsJsonAsync(
-                $"api/books", book);
+            var response = await Client.PostAsJsonAsync(
+                "api/books", book);
             response.EnsureSuccessStatusCode();
 
             // Deserialize the updated book from the response body.
@@ -68,7 +66,7 @@ namespace ClientRestAPI
 
         private static async Task<Book> UpdateBookAsync(Book book)
         {
-            HttpResponseMessage response = await Client.PutAsJsonAsync(
+            var response = await Client.PutAsJsonAsync(
                 $"api/books/{book.Id}", book);
             response.EnsureSuccessStatusCode();
 
@@ -79,7 +77,7 @@ namespace ClientRestAPI
 
         private static async Task<HttpStatusCode> DeleteBookAsync(int id)
         {
-            HttpResponseMessage response = await Client.DeleteAsync(
+            var response = await Client.DeleteAsync(
                 $"api/books/{id}");
             return response.StatusCode;
         }
@@ -121,14 +119,11 @@ namespace ClientRestAPI
                     new Book {Id = 8001, Title = "Star Wars 1"},
                     new Book {Id = 8002, Title = "Star Wars 2"},
                     new Book {Id = 8003, Title = "Star Wars 3"},
-                    new Book {Id = 8004, Title = "Star Wars 4"},
+                    new Book {Id = 8004, Title = "Star Wars 4"}
                 };
 
                 // Add the book list from repository to server
-                foreach (var bk in repository)
-                {
-                    await AddBookAsync(bk);
-                }
+                foreach (var bk in repository) await AddBookAsync(bk);
 
                 // Get all books
                 Console.WriteLine("All books...");
